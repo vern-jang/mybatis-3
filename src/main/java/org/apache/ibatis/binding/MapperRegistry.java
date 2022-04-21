@@ -64,10 +64,13 @@ public class MapperRegistry {
       }
       boolean loadCompleted = false;
       try {
+        // Map<Class<?>, MapperProxyFactory<?>> 存放的是接口类型，和对应的工厂类的关系
         knownMappers.put(type, new MapperProxyFactory<>(type));
         // It's important that the type is added before the parser is run
         // otherwise the binding may automatically be attempted by the
         // mapper parser. If the type is already known, it won't try.
+
+        // 注册了接口之后，根据接口，开始解析所有方法上的注解 例如：@Select
         MapperAnnotationBuilder parser = new MapperAnnotationBuilder(config, type);
         parser.parse();
         loadCompleted = true;

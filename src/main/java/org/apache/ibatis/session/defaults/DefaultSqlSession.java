@@ -40,6 +40,8 @@ import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.session.SqlSession;
 
 /**
+ * 默认SqlSession
+ * 它是线程不安全的，每次都要创建SqlSession
  * The default implementation for {@link SqlSession}.
  * Note that this class is not Thread-Safe.
  *
@@ -148,6 +150,7 @@ public class DefaultSqlSession implements SqlSession {
   private <E> List<E> selectList(String statement, Object parameter, RowBounds rowBounds, ResultHandler handler) {
     try {
       MappedStatement ms = configuration.getMappedStatement(statement);
+      // 如果cacheEnable为true（默认），Executor会被CachingExecutor装饰
       return executor.query(ms, wrapCollection(parameter), rowBounds, handler);
     } catch (Exception e) {
       throw ExceptionFactory.wrapException("Error querying database.  Cause: " + e, e);

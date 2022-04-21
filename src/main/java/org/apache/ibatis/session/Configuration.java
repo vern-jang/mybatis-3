@@ -679,6 +679,7 @@ public class Configuration {
 
   public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
     StatementHandler statementHandler = new RoutingStatementHandler(executor, mappedStatement, parameterObject, rowBounds, resultHandler, boundSql);
+    // 植入插件逻辑（返回代理对象）
     statementHandler = (StatementHandler) interceptorChain.pluginAll(statementHandler);
     return statementHandler;
   }
@@ -696,11 +697,17 @@ public class Configuration {
     } else if (ExecutorType.REUSE == executorType) {
       executor = new ReuseExecutor(this, transaction);
     } else {
+      // 默认 SimpleExecutor
       executor = new SimpleExecutor(this, transaction);
     }
+
+    // 二级缓存开关，settings中的cacheEnabled 默认是true
     if (cacheEnabled) {
+      // 使用CachingExecutor装饰Executor
       executor = new CachingExecutor(executor);
     }
+
+    // 植入插件的逻辑，至此，四大对象已全部拦截完毕
     executor = (Executor) interceptorChain.pluginAll(executor);
     return executor;
   }

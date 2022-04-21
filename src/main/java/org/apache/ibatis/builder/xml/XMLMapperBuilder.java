@@ -90,10 +90,19 @@ public class XMLMapperBuilder extends BaseBuilder {
     this.resource = resource;
   }
 
+  /**
+   * resource 相对路径解析
+   * <mapper resource="com/ydydsj/mybatis/cache/mapper/StudentMapper.xml"/>
+   */
   public void parse() {
+    // 总体上做了两件事情，对于SQL语句的注册和Mapper接口的注册
     if (!configuration.isResourceLoaded(resource)) {
+      // 1、具体增删改查标签的解析
+      // 一个标签一个MappedStatement
       configurationElement(parser.evalNode("/mapper"));
       configuration.addLoadedResource(resource);
+      // 2、把namespace（接口类型）和工厂类绑定起来，放到一个map
+      // 一个namespace 一个MapperProxyFactory
       bindMapperForNamespace();
     }
 
@@ -113,11 +122,17 @@ public class XMLMapperBuilder extends BaseBuilder {
         throw new BuilderException("Mapper's namespace cannot be empty");
       }
       builderAssistant.setCurrentNamespace(namespace);
+      // 添加缓存对象
       cacheRefElement(context.evalNode("cache-ref"));
+      // 解析cache属性，添加缓存对象
       cacheElement(context.evalNode("cache"));
+      // 创建ParameterMapping对象
       parameterMapElement(context.evalNodes("/mapper/parameterMap"));
+      // 创建List<ResultMapping>
       resultMapElements(context.evalNodes("/mapper/resultMap"));
+      // 解析可以复用的SQL
       sqlElement(context.evalNodes("/mapper/sql"));
+      // 解析增删改查标签，得到MappedStatement
       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
     } catch (Exception e) {
       throw new BuilderException("Error parsing Mapper XML. The XML location is '" + resource + "'. Cause: " + e, e);
@@ -133,8 +148,10 @@ public class XMLMapperBuilder extends BaseBuilder {
 
   private void buildStatementFromContext(List<XNode> list, String requiredDatabaseId) {
     for (XNode context : list) {
+      // 用来解析增删改查标签的
       final XMLStatementBuilder statementParser = new XMLStatementBuilder(configuration, builderAssistant, context, requiredDatabaseId);
       try {
+        // 解析Statement,添加MappedStatement对象
         statementParser.parseStatementNode();
       } catch (IncompleteElementException e) {
         configuration.addIncompleteStatement(statementParser);
@@ -420,6 +437,7 @@ public class XMLMapperBuilder extends BaseBuilder {
     if (namespace != null) {
       Class<?> boundType = null;
       try {
+        // namespace 命名空间，就是接口的类型 <mapper namespace="xxx">
         boundType = Resources.classForName(namespace);
       } catch (ClassNotFoundException e) {
         // ignore, bound type is not required
@@ -429,6 +447,7 @@ public class XMLMapperBuilder extends BaseBuilder {
         // to prevent loading again this resource from the mapper interface
         // look at MapperAnnotationBuilder#loadXmlResource
         configuration.addLoadedResource("namespace:" + namespace);
+        // 添加到MapperRegistry，本质是一个map，里面也有Configuration
         configuration.addMapper(boundType);
       }
     }

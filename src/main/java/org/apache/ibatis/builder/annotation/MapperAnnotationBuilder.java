@@ -112,14 +112,28 @@ public class MapperAnnotationBuilder {
     this.type = type;
   }
 
+  /**
+   * 接口上的注解和方法上的注解的解析
+   */
   public void parse() {
     String resource = type.toString();
     if (!configuration.isResourceLoaded(resource)) {
+      // 先判断mapper.xml 有没有解析，没有的话就先解析mapper.xml
+      // ？ 为什么原来解析过XML文件，这里又要解析呢，因为前面可能没解析mapper.xml（例如在全局配置文件中定义package方式）
+      //    <mappers>
+      //        <package name=""/>
+      //    </mappers>
       loadXmlResource();
       configuration.addLoadedResource(resource);
       assistant.setCurrentNamespace(type.getName());
+
+      // 处理接口上的注解
+      // 处理@CacheNamespace
       parseCache();
+      // 处理@CacheNamespaceRef
       parseCacheRef();
+
+      // 获取所有的方法
       for (Method method : type.getMethods()) {
         if (!canHaveStatement(method)) {
           continue;
@@ -129,6 +143,7 @@ public class MapperAnnotationBuilder {
           parseResultMap(method);
         }
         try {
+          // 解析方法上的注解（主要是SQL语句），添加到MappedStatement集合中
           parseStatement(method);
         } catch (IncompleteElementException e) {
           configuration.addIncompleteMethod(new MethodResolver(this, method));
@@ -298,8 +313,10 @@ public class MapperAnnotationBuilder {
     final LanguageDriver languageDriver = getLanguageDriver(method);
 
     getAnnotationWrapper(method, true, statementAnnotationTypes).ifPresent(statementAnnotation -> {
+      // 从方法上获取SQL
       final SqlSource sqlSource = buildSqlSource(statementAnnotation.getAnnotation(), parameterTypeClass, languageDriver, method);
       final SqlCommandType sqlCommandType = statementAnnotation.getSqlCommandType();
+      // @Options 可以设置缓存、自增主键等
       final Options options = getAnnotationWrapper(method, false, Options.class).map(x -> (Options)x.getAnnotation()).orElse(null);
       final String mappedStatementId = type.getName() + "." + method.getName();
 
@@ -347,6 +364,7 @@ public class MapperAnnotationBuilder {
 
       String resultMapId = null;
       if (isSelect) {
+        // @ResultMap 定义返回值
         ResultMap resultMapAnnotation = method.getAnnotation(ResultMap.class);
         if (resultMapAnnotation != null) {
           resultMapId = String.join(",", resultMapAnnotation.value());
@@ -355,6 +373,7 @@ public class MapperAnnotationBuilder {
         }
       }
 
+      // 最后，增删改查标签 也要添加到MappedStatement集合中去
       assistant.addMappedStatement(
           mappedStatementId,
           sqlSource,

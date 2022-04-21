@@ -58,10 +58,14 @@ public class SimpleExecutor extends BaseExecutor {
     Statement stmt = null;
     try {
       Configuration configuration = ms.getConfiguration();
+      // SQL处理的关键对象StatementHandler，返回RoutingStatementHandler
       StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
+      // 获取Statement对象
       stmt = prepareStatement(handler, ms.getStatementLog());
+      // 执行查询 RoutingStatementHandler的query方法
       return handler.query(stmt, resultHandler);
     } finally {
+      // 用完关闭
       closeStatement(stmt);
     }
   }

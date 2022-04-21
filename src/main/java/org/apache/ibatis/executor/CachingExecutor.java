@@ -84,7 +84,9 @@ public class CachingExecutor implements Executor {
 
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    // 获取SQL
     BoundSql boundSql = ms.getBoundSql(parameterObject);
+    // 创建CacheKey：什么样的SQL是同一条SQL？
     CacheKey key = createCacheKey(ms, parameterObject, rowBounds, boundSql);
     return query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
   }
@@ -93,19 +95,26 @@ public class CachingExecutor implements Executor {
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, CacheKey key, BoundSql boundSql)
       throws SQLException {
     Cache cache = ms.getCache();
+    // cache对象由<cache>标签决定，在XMLMapperBuilder类cacheElement()
     if (cache != null) {
+      // flushCache="true" 清空一级二级缓存
       flushCacheIfRequired(ms);
       if (ms.isUseCache() && resultHandler == null) {
         ensureNoOutParams(ms, boundSql);
+        // 获取二级缓存
+        // 缓存通过TransactionalCacheManager和TransactionalCache管理
         @SuppressWarnings("unchecked")
         List<E> list = (List<E>) tcm.getObject(cache, key);
         if (list == null) {
           list = delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+          // 写入二级缓存
           tcm.putObject(cache, key, list); // issue #578 and #116
         }
         return list;
       }
     }
+
+    // 走到SimpleExecutor | ReuseExecutor | BatchExecutor
     return delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
   }
 

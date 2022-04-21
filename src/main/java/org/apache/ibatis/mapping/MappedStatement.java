@@ -29,6 +29,7 @@ import org.apache.ibatis.scripting.LanguageDriver;
 import org.apache.ibatis.session.Configuration;
 
 /**
+ * ms 增删改查SQL语句的封装【非常重要】
  * @author Clinton Begin
  */
 public final class MappedStatement {
